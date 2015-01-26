@@ -1,38 +1,72 @@
 /* jshint devel:true */
-var canvas,preload, w,h;
-function init() {
-    // get a reference to the canvas we'll be working with:
-    preload = new createjs.LoadQueue();
-    preload.on('complete',handleFileUpload,this);
-    preload.loadFile({id:"yeoman",src:"images/yeoman.png"});
+(function () {
+    var stage,preload,cW,cH,winW,winH;
+    var road,city1,city2,sky,build1,build2;
+    function init(){
+        var canvas = document.getElementById("testCanvas");
+        winW = window.innerWidth;
+        winH = window.innerHeight;
+        canvas.width = cW = winW - 10;
+        canvas.height = cH =  winH - 10;
 
-    w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
-    h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-    canvas = document.getElementById("testCanvas");
-    canvas.width = w - 10;
-    canvas.height = h - 10;
-    // create a stage object to work with the canvas. This is the top level node in the display list:
-    var stage = new createjs.Stage(canvas);
+        stage = new createjs.Stage(canvas);
 
-    // Create a new Text object:
-    var text = new createjs.Text("Hello World!", "bold 7em Arial", "#ff7700");
+        preload = new createjs.LoadQueue();
 
-    // add the text as a child of the stage. This means it will be drawn any time the stage is updated
-    // and that its transformations will be relative to the stage coordinates:
-    stage.addChild(text);
+        var manifest =[{id:"road",src:"images/srijan/road.png"},
+            {id:"build1",src:"images/srijan/centralPerk.png"},
+            {id:"build2",src:"images/srijan/phoneBooth.png"},
+            {id:"farbuild1",src:"images/srijan/nearer layer.jpg"},
+            {id:"farbuild2",src:"images/srijan/farthest layer.jpg"},
+            {id:"sky",src:"images/srijan/sky.png"}
+        ];
+        preload.loadManifest(manifest);
+        preload.on("complete",handleComplete);
+    }
 
-    // position the text on screen, relative to the stage coordinates:
-    //console.log(window.innerWidth,window.innerHeight);
-    var b = text.getBounds();
-    text.x = (canvas.width - 150 - b.width) / 2;
-    text.y = (canvas.height - 100 - b.height) / 2;
+    function handleComplete(){
+        sky = new createjs.Shape();
+        sky.graphics.beginBitmapFill(preload.getResult("sky"),"repeat-x").drawRect(0, 0, cW, cH);
 
-    // call update on the stage to make it render the current display list to the canvas:
-    stage.update();
-}
+        var roadImg = preload.getResult("road");
+        road = new createjs.Shape();
+        road.graphics.beginBitmapFill(roadImg).drawRect(0, 0, cW + roadImg.width, roadImg.height*1);
+        road.tileW = roadImg.width;
+        road.y = cH - roadImg.height;
 
-function handleFileUpload(event){
-    var bitmap = new createjs.Bitmap(event.result);
-    canvas.addChild(bitmap);
-    canvas.update();
-}
+        /*var matrix = new createjs.Matrix2D(1,2,3,4,5,6);*/
+
+        build1 = new createjs.Bitmap(preload.getResult("build1"));
+        build1.setTransform(Math.random()*cW ,cH - build1.image.height * 0.7 - roadImg.height, 0.7,0.7);
+        build1.alpha = 1;
+
+        build2 = new createjs.Bitmap(preload.getResult("build2"));
+        //console.log(cH - build2.image.height * 1 - roadImg.height);
+        build2.setTransform(Math.random()*cW ,cH - build2.image.height * 0.7 - roadImg.height, 0.7,0.7);
+        build2.alpha = 1;
+
+        stage.addChild(sky,build1,build2,road);
+        createjs.Ticker.timingMode = createjs.Ticker.RAF;
+        document.onkeydown = tick;
+        //createjs.Ticker.addEventListener("tick", tick);
+    }
+
+    function tick(event){
+        if(event.keyCode === 37){
+            var deltaS = event.delta / 1000 || 40/1000;
+            road.x = (road.x - deltaS * 200) % road.tileW;
+
+            build1.x = (build1.x - deltaS * 60);
+            if (build1.x + build1.image.width * build1.scaleX <= 0) {
+                build1.x = cW;
+            }
+            build2.x = (build2.x - deltaS * 75);
+            if (build2.x + build2.image.width * build2.scaleX <= 0) {
+                build2.x = cW;
+            }
+            stage.update(event);
+        }
+    }
+
+    init();
+})();
